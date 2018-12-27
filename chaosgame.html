@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			*{
+				font-size: 1em;
+				color: #000;
+				font-family: Arial;
+			}
+			#chaosGameForm{
+				border-style: solid;
+				border-width: 1px;
+				border-color: #111;
+				background-color: #ddd;
+				padding: 10px;
+				width: 490px;
+			}
+			#chaosGame{
+				border-style: solid;
+				//border-width: 1px;
+				border-color: #111;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="chaosGameForm">
+			<!--Select number of vertices-->
+			Vertices: <input id="fldNumberVertexes" type="number" default="3" min="3"><br>
+			<!--Select factor by which "cursor" will jump towards vertex-->
+			Factor: <input id="fldFactor" type="number" default="0.5" min="0" max="1"><br>
+			<!--Select whether you want them to be placed randomly or in a polygonal formation around the center-->
+			Random:<input id="fldRadioRand" type="radio" name="radioRandOrPoly" checked = "true"> Polygonal:<input id="fldRadioPoly" type="radio" name="radioRandOrPoly"> <br>
+			<!--Select whether you want to avoid repeating the same vertex-->
+			Repeat vertex?:<input id="fldRepeatAllow" type="checkbox" name="RepeatAllow"><br>
+			<!--Select number of steps you want to play the chaos game for-->
+			Steps: <input id="fldNumberSteps" type="number" min="1000" default="10000"><br>
+			<!--Play chaos game-->
+			<button id="btnPlayChaosGame">CHAOS</button><br>
+		</div>
+	
+		<div id="output">
+			<canvas id= "chaosGame" width="500" height="500"></canvas>
+		</div>
+		
+		<script>
+			
+			const canvas = document.getElementById("chaosGame");
+			const ctx = canvas.getContext("2d");
+			
+			const fieldVertexes = document.getElementById("fldNumberVertexes");
+			const fieldFactor = document.getElementById("fldFactor");
+			const fieldRandom = document.getElementById("fldRadioRand");
+			const fieldPoly = document.getElementById("fldRadioPoly");
+			const fieldAllowrepeat = document.getElementById("fldRepeatAllow");
+			const fieldNumberSteps = document.getElementById("fldNumberSteps");
+			const buttonPlayChaos = document.getElementById("btnPlayChaosGame");
+			
+			const tau = Math.PI * 2;
+			const phi = 0.5 * (Math.sqrt(5) + 1);
+		
+			var vertices = [];
+			var listPoints = [];
+			
+			//Cursor
+			var x = 0;
+			var y = 0;			
+			
+			//Factor by which the "cursor" moves
+			var factor = 0.5;
+			
+			//Generates the vertices
+			function generateListOfVertices(points,polygonal){
+				var th;
+				var px;
+				var py;
+				var verticesList = [];
+				
+				if (polygonal){
+					//arrange the points as a polygon centered around (0.5, 0.5)
+					for (var p = 0; p < points; p++) {
+						th = (p/points) * tau;
+						px = 0.5 + (0.4 * Math.cos(th));
+						py = 0.5 + (0.4 * Math.sin(th));
+						verticesList.push([px,py]);
+					}
+					
+				} else {
+					//random distribution of points across canvas
+					for (var p = 0; p < points; p++) {
+						px = Math.random();
+						py = Math.random();
+						verticesList.push([px,py]);
+					}
+				}
+				
+				return verticesList;
+			}
+			
+			//Sets "cursor" to the midpoint of the vertices
+			function getMidpointOfVertices() {
+				if (vertices.length > 0) {					
+					for (var v = 0; v < vertices.length; v++){
+						x += vertices[v][0];
+						y += vertices[v][1];
+					}
+					x /= vertices.length;
+					y /= vertices.length;
+				} else {
+					x = 0.5;
+					y = 0.5;
+				}
+			}
+	
+			//Plays the "Chaos game" for a predefined number of steps
+			function playChaosGame(steps, repeatsAllowed){
+				var currentSelection = Math.floor(Math.random() * vertices.length);
+				
+				//Keep track of which vertex was last used
+				var previousSelection = currentSelection;
+				
+				
+				for (var st = 0; st < steps; st++) {
+					//select one of the Vertices
+					while (true) {
+						currentSelection = Math.floor(Math.random() * vertices.length);
+						
+						//option to not select the same vertex twice in a row
+						if (repeatsAllowed) {break;} 
+						else {
+							if (currentSelection != previousSelection) {break;}
+						}
+					}
+					
+					//move the "cursor" to a point a fraction of the way between it's current position and selected vertex
+					//default setting is that the cursor moves to the midpoint between current position and vertex
+					x = (x + vertices[currentSelection][0]) * factor;
+					y = (y + vertices[currentSelection][1]) * factor;
+					
+					//this new point is added to the list of points
+					listPoints.push([x, y]);
+					
+					//update vertex selection history
+					previousSelection = currentSelection;
+				}
+			}
+						
+			//Draw the points
+			function drawPoints(){
+				ctx.clearRect(0, 0, canvas.width, canvas.height);
+				
+				ctx.beginPath();
+				var drawX = 0;
+				var drawY = 0;
+				
+				//draw background
+				ctx.fillStyle = "#000000";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				
+				//draw the vertices
+				ctx.fillStyle = "#ffffff";
+				ctx.fillRect(drawX,drawY,1,1);
+				
+				if (vertices.length > 0){
+					for (var i = 0; i <vertices.length; i++) {
+						drawX = vertices[i][0] * canvas.width;
+						drawY = vertices[i][1] * canvas.height;
+						ctx.fillRect(drawX,drawY,1,1);
+					}
+				}
+				
+				//draw the points
+				ctx.fillStyle = "#ff0000";
+				if (listPoints.length > 0) {
+					for (var i = 0; i < listPoints.length; i++) {
+						drawX = listPoints[i][0] * canvas.width;
+						drawY = listPoints[i][1] * canvas.height;
+						ctx.fillRect(drawX,drawY,1,1);
+					}
+				}
+				
+				//draw the cursor
+				ctx.fillStyle = "#00ff00";
+				drawX = x * canvas.width;
+				drawY = y * canvas.height;
+				ctx.fillRect(drawX,drawY,1,1);
+				
+				ctx.closePath();
+			}
+			
+			//Playing the chaos game
+			buttonPlayChaos.addEventListener("click", function() { 
+				var numberVertices = (isNaN(parseInt(fieldVertexes.value)) ? 3 : parseInt(fieldVertexes.value) ); //minimum of three vertices allowed for chaos game
+				console.log(numberVertices);
+				
+				var jumpFactor = (isNaN(parseInt(fieldFactor.value)) ? 0 : parseInt(fieldFactor.value) ); //minimum of three vertices allowed for chaos game
+				console.log(jumpFactor);
+				
+				var isPolygonal = fieldPoly.checked; //if Polygonal is selected then set this to true
+				console.log(isPolygonal);
+				
+				var numberSteps = (isNaN(parseInt(fieldNumberSteps.value)) ? 1000 : parseInt(fieldNumberSteps.value) ); //number of steps to run the chaos game for
+				console.log(numberSteps);
+				
+				var allowRepeats = fieldAllowrepeat.checked;
+				console.log(allowRepeats);
+				
+				vertices = generateListOfVertices(numberVertices,isPolygonal);
+				getMidpointOfVertices();
+				listPoints = [];
+				playChaosGame(numberSteps, allowRepeats);
+				drawPoints();
+			});
+			
+			
+			
+			//Example chaos game
+			/*
+			document.addEventListener("DOMContentLoaded", function() {
+				
+				vertices = generateListOfVertices(7,true);
+				getMidpointOfVertices();
+				playChaosGame(50000, false);
+				drawPoints();
+				
+			});*/
+			
+			
+			
+		</script>
+	</body>
+</html>
